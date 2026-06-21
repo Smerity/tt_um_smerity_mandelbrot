@@ -5,7 +5,7 @@ project:
   discord:      "Smerity"                # your discord username (optional)
   description:  "An interactive fixed-point Mandelbrot iterator with a sequential (bit-serial) multiplier. Tested on iCEBreaker FPGA V1.1a."
   language:     "Verilog"
-  clock_hz:     5000000           # 5 MHz — matches CLOCK_PERIOD=200ns; GF180 slow corner needs the relaxed target
+  clock_hz:     10000000          # 10 MHz — smul2 branch, matches CLOCK_PERIOD=100ns (5 MHz on main)
 
   # Q4.28 sequential = 113,727 um^2 of cells (measured, real GF180 lib)
   # 2x2 die is 711.2 x 325.36 = 231,393 um^2 -> ~49% utilisation

@@ -50,6 +50,77 @@ module smul #(parameter integer W = 16) (
 endmodule
 
 /*
+ * smul2 — radix-4 Booth sequential multiplier. Drop-in for smul (same ports +
+ * start/done handshake, same signed 2W-bit product), but consumes 2 bits of the
+ * multiplier per cycle, finishing in W/2 steps instead of W (~2x fewer cycles).
+ * Booth is natively signed, so there is no sign-magnitude negate dance.
+ *
+ * One (2W+2)-bit register P = {accumulator[high], multiplier[low]} plus the Booth
+ * overlap bit q1. Each step recodes the window {P[1],P[0],q1} into a digit in
+ * {-2,-1,0,+1,+2}, adds digit*a to the high half, then arithmetic-shifts P right
+ * by 2. After W/2 steps the signed product is in P[2W-1:0].
+ */
+module smul2 #(parameter integer W = 16) (
+    input  wire                  clk,
+    input  wire                  rst_n,
+    input  wire                  start,
+    input  wire signed [W-1:0]   a, b,
+    output reg  signed [2*W-1:0] p,
+    output reg                   done
+);
+    localparam integer STEPS = W/2;
+
+    reg                    running;
+    reg signed [2*W+1:0]   P;        // {acc (W+2 high bits), multiplier (W low bits)}
+    reg                    q1;       // Booth overlap bit (b_{-1})
+    reg signed [W+1:0]     Ma, M2;   // +1*a and +2*a, sign-extended to W+2 bits
+    reg [$clog2(W/2+1)-1:0] cnt;
+
+    wire [2:0] window = {P[1], P[0], q1};
+    reg signed [W+1:0] addend;
+    always @(*) begin
+        case (window)
+            3'b001, 3'b010: addend =  Ma;            // +1
+            3'b011:         addend =  M2;            // +2
+            3'b100:         addend = -M2;            // -2
+            3'b101, 3'b110: addend = -Ma;            // -1
+            default:        addend =  {(W+2){1'b0}}; // 000 / 111 -> 0
+        endcase
+    end
+
+    wire signed [W+1:0]   Ahi   = P[2*W+1 : W];
+    wire signed [W+1:0]   Ahi1  = Ahi + addend;
+    wire signed [2*W+1:0] Pfull = {Ahi1, P[W-1:0]};
+    wire signed [2*W+1:0] Pshft = Pfull >>> 2;
+
+    always @(posedge clk) begin
+        if (!rst_n) begin
+            running <= 1'b0; done <= 1'b0; p <= 0;
+            P <= 0; q1 <= 1'b0; Ma <= 0; M2 <= 0; cnt <= 0;
+        end else begin
+            done <= 1'b0;
+            if (start) begin
+                P       <= {{(W+2){1'b0}}, b};
+                q1      <= 1'b0;
+                Ma      <= {{2{a[W-1]}}, a};         // +1*a
+                M2      <= {a[W-1], a, 1'b0};        // +2*a
+                cnt     <= STEPS[$clog2(W/2+1)-1:0];
+                running <= 1'b1;
+            end else if (running) begin
+                P  <= Pshft;
+                q1 <= P[1];
+                cnt <= cnt - 1'b1;
+                if (cnt == 1) begin
+                    running <= 1'b0;
+                    done    <= 1'b1;
+                    p       <= Pshft[2*W-1:0];
+                end
+            end
+        end
+    end
+endmodule
+
+/*
  * mandel — Q4.FRAC iteration, sequential multiplier. `maxit` is a runtime INPUT
  * so the host can change the iteration limit live (on both the TT chip and the
  * iCEBreaker). Bit-exact for any fixed maxit.
@@ -86,7 +157,9 @@ module mandel #(
     reg  smul_start;
     wire smul_done;
     wire signed [2*WIDTH-1:0] smul_p;
-    smul #(.W(WIDTH)) u_smul (
+    // radix-4 Booth multiplier (smul2): ~2x fewer cycles than smul, bit-exact.
+    // The FSM waits on `done`, so this is a pure drop-in. Flip back to `smul` to A/B.
+    smul2 #(.W(WIDTH)) u_smul (
         .clk(clk), .rst_n(rst_n), .start(smul_start),
         .a(ma), .b(mb), .p(smul_p), .done(smul_done));
 

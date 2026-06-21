@@ -17,12 +17,12 @@
 
   "//": "CLOCK_PERIOD - Increase this in case you are getting setup time violations.",
   "//": "The value is in nanoseconds, so 20ns == 50MHz.",
-  "//": "Set to 200ns (5 MHz): GF180's slow corner is harsh (a sibling 2x2 Mandelbrot",
-  "//": "saw slow-corner setup violations at 50 MHz and closed cleanly at 5 MHz). This",
-  "//": "design has no speed requirement, so 5 MHz maximises first-harden success.",
-  "//": "The sequential datapath is short-path, so you can likely tighten this after",
-  "//": "a green run shows the slow-corner slack.",
-  "CLOCK_PERIOD": 200,
+  "//": "smul2 branch: tightened 200ns->100ns (10 MHz). The 5 MHz harden on main",
+  "//": "closed with +113ns slow-corner setup slack (path ~88ns), so 100ns has ample",
+  "//": "room even with smul2's slightly longer per-cycle Booth path. If the gds Action",
+  "//": "reports a setup violation, relax toward 120-150ns; if global placement fails",
+  "//": "with GPL-0302, raise PL_TARGET_DENSITY_PCT (60 -> 70).",
+  "CLOCK_PERIOD": 100,
 
   "//": "Hold slack margin - Increase them in case you are getting hold violations.",
   "PL_RESIZER_HOLD_SLACK_MARGIN": 0.1,
