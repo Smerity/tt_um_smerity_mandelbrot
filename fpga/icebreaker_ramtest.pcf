@@ -1,0 +1,5 @@
+set_io        clk    35
+set_frequency clk    12
+set_io        TX     9
+set_io        btn_n  10
+set_io        ledr_n 11
