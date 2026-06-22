@@ -137,17 +137,22 @@ module mandel #(
     output reg  [7:0]              value,
     output reg                     busy
 );
-    // S_MAG is a pipeline stage: the 64-bit |z|^2 add (prr+pii) is registered here,
-    // and the (now-fast) escape compare happens the next cycle in S_UPD. Splits the
-    // design's deepest path (64-bit add chained into 64-bit compare) across 2 cycles.
-    localparam [2:0] S_IDLE=3'd0, S_ISSUE=3'd1, S_WAIT=3'd2, S_MAG=3'd3, S_UPD=3'd4;
+    // The 64-bit |z|^2 add (prr+pii) is split across two cycles -- S_MAG1 does the
+    // low 32-bit half (+ carry), S_MAG2 the high half (+ carry) -- so each cycle is
+    // only a 32-bit carry chain instead of a 64-bit one. The escape compare is
+    // shallow (a few high bits) and stays in S_UPD. Halves the design's deepest
+    // path for +1 cycle/iteration.
+    localparam [2:0] S_IDLE=3'd0, S_ISSUE=3'd1, S_WAIT=3'd2,
+                     S_MAG1=3'd3, S_MAG2=3'd4, S_UPD=3'd5;
     reg [2:0] state;
     reg [1:0] which;
 
     reg signed [WIDTH-1:0] zr, zi, c_re, c_im;
     reg [7:0] iter;
     reg signed [2*WIDTH-1:0] prr, pii, pri;
-    reg signed [2*WIDTH-1:0] sum64;            // pipelined prr+pii (registered in S_MAG)
+    reg signed [2*WIDTH-1:0] sum64;            // {high, low} 64-bit |z|^2 sum (S_MAG2)
+    reg        [WIDTH-1:0]   sum_lo;           // low-half partial sum (S_MAG1 -> S_MAG2)
+    reg                      carry_lo;         // carry out of the low-half add
 
     reg signed [WIDTH-1:0] ma, mb;
     always @(*) begin
@@ -170,7 +175,7 @@ module mandel #(
     wire signed [WIDTH-1:0]   zr2   = prr >>> FRAC;
     wire signed [WIDTH-1:0]   zi2   = pii >>> FRAC;
     wire signed [WIDTH-1:0]   xprod = pri >>> FRAC;
-    wire signed [2*WIDTH-1:0] mag2  = sum64 >>> FRAC;   // sum64 = prr+pii, registered in S_MAG
+    wire signed [2*WIDTH-1:0] mag2  = sum64 >>> FRAC;   // sum64 = prr+pii, ready after S_MAG2
     localparam signed [2*WIDTH-1:0] FOUR = 4;
     wire escaped = mag2 > (FOUR << FRAC);
 
@@ -178,7 +183,7 @@ module mandel #(
         if (!rst_n) begin
             state <= S_IDLE; busy <= 1'b0; value <= 8'b0; which <= 2'd0;
             zr <= 0; zi <= 0; c_re <= 0; c_im <= 0; iter <= 8'b0;
-            prr <= 0; pii <= 0; pri <= 0; sum64 <= 0; smul_start <= 1'b0;
+            prr <= 0; pii <= 0; pri <= 0; sum64 <= 0; sum_lo <= 0; carry_lo <= 0; smul_start <= 1'b0;
         end else begin
             smul_start <= 1'b0;
             case (state)
@@ -199,11 +204,18 @@ module mandel #(
                             2'd1: pii <= smul_p;
                             2'd2: pri <= smul_p;
                         endcase
-                        if (which == 2'd2) state <= S_MAG;
+                        if (which == 2'd2) state <= S_MAG1;
                         else begin which <= which + 2'd1; state <= S_ISSUE; end
                     end
                 end
-                S_MAG: begin sum64 <= prr + pii; state <= S_UPD; end  // pipeline: 64-bit add
+                S_MAG1: begin                                  // low 32-bit half + carry out
+                    {carry_lo, sum_lo} <= {1'b0, prr[WIDTH-1:0]} + {1'b0, pii[WIDTH-1:0]};
+                    state <= S_MAG2;
+                end
+                S_MAG2: begin                                  // high 32-bit half + carry in
+                    sum64 <= {prr[2*WIDTH-1:WIDTH] + pii[2*WIDTH-1:WIDTH] + carry_lo, sum_lo};
+                    state <= S_UPD;
+                end
                 S_UPD: begin
                     if (escaped)            begin value <= iter; busy <= 1'b0; state <= S_IDLE; end
                     else if (iter == maxit) begin value <= 8'd0; busy <= 1'b0; state <= S_IDLE; end
