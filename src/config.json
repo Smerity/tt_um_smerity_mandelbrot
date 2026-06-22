@@ -17,11 +17,12 @@
 
   "//": "CLOCK_PERIOD - Increase this in case you are getting setup time violations.",
   "//": "The value is in nanoseconds, so 20ns == 50MHz.",
-  "//": "harden-speed branch: 64ns (~15.6 MHz). Datapath floor is ~60ns after the",
-  "//": "reset synchroniser, so 64ns closes timing with comfortable margin. The 60ns run",
-  "//": "had ONE marginal antenna net (400.8 vs 400.0, 0.2% over) on the reset-fanout",
-  "//": "tree; 64ns's looser routing plus heuristic diode insertion (above) clears it.",
-  "CLOCK_PERIOD": 64,
+  "//": "pipeline-explore branch: CLEAN CONFIRMING run at 57ns (~17.5 MHz) on the",
+  "//": "pipelined core. The 44ns probe found the slow-corner floor at ~53ns (path was",
+  "//": "hold-fix-buffer dominated, not arithmetic -- the mag2 split gained ~+2MHz over the",
+  "//": "synchroniser-only ~16.6MHz). 57ns gives the ~53ns path a ~+4ns slow-corner buffer",
+  "//": "for a clean all-corner close. Heuristic diodes (above) keep antenna clean.",
+  "CLOCK_PERIOD": 57,
 
   "//": "Hold slack margin - Increase them in case you are getting hold violations.",
   "PL_RESIZER_HOLD_SLACK_MARGIN": 0.1,

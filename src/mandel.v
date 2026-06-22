@@ -137,13 +137,17 @@ module mandel #(
     output reg  [7:0]              value,
     output reg                     busy
 );
-    localparam [2:0] S_IDLE=3'd0, S_ISSUE=3'd1, S_WAIT=3'd2, S_UPD=3'd3;
+    // S_MAG is a pipeline stage: the 64-bit |z|^2 add (prr+pii) is registered here,
+    // and the (now-fast) escape compare happens the next cycle in S_UPD. Splits the
+    // design's deepest path (64-bit add chained into 64-bit compare) across 2 cycles.
+    localparam [2:0] S_IDLE=3'd0, S_ISSUE=3'd1, S_WAIT=3'd2, S_MAG=3'd3, S_UPD=3'd4;
     reg [2:0] state;
     reg [1:0] which;
 
     reg signed [WIDTH-1:0] zr, zi, c_re, c_im;
     reg [7:0] iter;
     reg signed [2*WIDTH-1:0] prr, pii, pri;
+    reg signed [2*WIDTH-1:0] sum64;            // pipelined prr+pii (registered in S_MAG)
 
     reg signed [WIDTH-1:0] ma, mb;
     always @(*) begin
@@ -166,7 +170,7 @@ module mandel #(
     wire signed [WIDTH-1:0]   zr2   = prr >>> FRAC;
     wire signed [WIDTH-1:0]   zi2   = pii >>> FRAC;
     wire signed [WIDTH-1:0]   xprod = pri >>> FRAC;
-    wire signed [2*WIDTH-1:0] mag2  = (prr + pii) >>> FRAC;
+    wire signed [2*WIDTH-1:0] mag2  = sum64 >>> FRAC;   // sum64 = prr+pii, registered in S_MAG
     localparam signed [2*WIDTH-1:0] FOUR = 4;
     wire escaped = mag2 > (FOUR << FRAC);
 
@@ -174,7 +178,7 @@ module mandel #(
         if (!rst_n) begin
             state <= S_IDLE; busy <= 1'b0; value <= 8'b0; which <= 2'd0;
             zr <= 0; zi <= 0; c_re <= 0; c_im <= 0; iter <= 8'b0;
-            prr <= 0; pii <= 0; pri <= 0; smul_start <= 1'b0;
+            prr <= 0; pii <= 0; pri <= 0; sum64 <= 0; smul_start <= 1'b0;
         end else begin
             smul_start <= 1'b0;
             case (state)
@@ -195,10 +199,11 @@ module mandel #(
                             2'd1: pii <= smul_p;
                             2'd2: pri <= smul_p;
                         endcase
-                        if (which == 2'd2) state <= S_UPD;
+                        if (which == 2'd2) state <= S_MAG;
                         else begin which <= which + 2'd1; state <= S_ISSUE; end
                     end
                 end
+                S_MAG: begin sum64 <= prr + pii; state <= S_UPD; end  // pipeline: 64-bit add
                 S_UPD: begin
                     if (escaped)            begin value <= iter; busy <= 1'b0; state <= S_IDLE; end
                     else if (iter == maxit) begin value <= 8'd0; busy <= 1'b0; state <= S_IDLE; end
