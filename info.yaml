@@ -3,12 +3,12 @@ project:
   title:        "Smerity-Mandelbrot"
   author:       "Stephen Merity"
   discord:      "Smerity"                # your discord username (optional)
-  description:  "An interactive fixed-point Mandelbrot iterator with a sequential (bit-serial) multiplier. Tested on iCEBreaker FPGA V1.1a."
+  description:  "An interactive fixed-point Mandelbrot iterator with a sequential radix-4 (Booth) multiplier and pipelined escape test. Tested on iCEBreaker FPGA V1.1a."
   language:     "Verilog"
-  clock_hz:     10000000          # 10 MHz — smul2 branch, matches CLOCK_PERIOD=100ns (5 MHz on main)
+  clock_hz:     17500000          # 17.5 MHz guaranteed (CLOCK_PERIOD=57ns, slow corner); ~38 MHz typical/bench
 
-  # Q4.28 sequential = 113,727 um^2 of cells (measured, real GF180 lib)
-  # 2x2 die is 711.2 x 325.36 = 231,393 um^2 -> ~49% utilisation
+  # Q4.28 sequential core; 2x2 die (711.2 x 325.36 = 231,393 um^2).
+  # Hardened at 57ns: ~76% utilisation, timing closed (+2.9ns slow-corner setup).
   tiles: "2x2"
 
   top_module:  "tt_um_smerity_mandelbrot"
