@@ -17,12 +17,11 @@
 
   "//": "CLOCK_PERIOD - Increase this in case you are getting setup time violations.",
   "//": "The value is in nanoseconds, so 20ns == 50MHz.",
-  "//": "split-add branch: AGGRESSIVE PROBE at 40ns (~25 MHz). The 64-bit |z|^2 add is",
-  "//": "now split into two 32-bit halves (S_MAG1/S_MAG2), so each cycle is a 32-bit",
-  "//": "carry chain instead of 64-bit -- this targets the GF180 standard-cell adder that",
-  "//": "the FPGA (dedicated carry) can't show. Prior floor (single 64-bit add) was ~53ns.",
-  "//": "Read the slow-corner WNS: if a clean datapath path is now binding (~35-40ns) the",
-  "//": "split worked; if a hold-fix path (~53ns) is binding, the add wasn't the only wall.",
+  "//": "split-add branch, AGGRESSIVE 40ns (~25 MHz) probe. The split-add harden hit a",
+  "//": "~47ns floor whose worst path was hold-fix delay buffers on high-fanout nets (not",
+  "//": "arithmetic). MAX_FANOUT_CONSTRAINT (below) attacks that by shrinking those trees.",
+  "//": "Read the slow-corner WNS + whether the worst path is now arithmetic or still",
+  "//": "hold-fix dlyb buffers. If the floor drops below ~47ns, the fanout cap worked.",
   "CLOCK_PERIOD": 40,
 
   "//": "Hold slack margin - Increase them in case you are getting hold violations.",
@@ -34,6 +33,12 @@
   "//": "placed). Clears the 60ns run's one marginal net (net292, Metal2 400.8 vs 400.0).",
   "//": "Diodes are passive charge-bleed protection: bit-exact, negligible area/power.",
   "RUN_HEURISTIC_DIODE_INSERTION": 1,
+
+  "//": "Cap fanout so the tool splits high-fanout nets into smaller buffer trees ->",
+  "//": "less clock skew -> less hold-fix delay needed -> smaller slow-corner setup",
+  "//": "penalty. This is the safe, automatic form of register replication; it targets",
+  "//": "the high-fanout startpoints that the hold-fix critical paths sit on.",
+  "MAX_FANOUT_CONSTRAINT": 8,
 
 
   "//": "RUN_LINTER, LINTER_INCLUDE_PDK_MODELS - Disabling the linter is not recommended!",
