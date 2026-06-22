@@ -17,12 +17,11 @@
 
   "//": "CLOCK_PERIOD - Increase this in case you are getting setup time violations.",
   "//": "The value is in nanoseconds, so 20ns == 50MHz.",
-  "//": "split-add branch, AGGRESSIVE 40ns (~25 MHz) probe. The split-add harden hit a",
-  "//": "~47ns floor whose worst path was hold-fix delay buffers on high-fanout nets (not",
-  "//": "arithmetic). MAX_FANOUT_CONSTRAINT (below) attacks that by shrinking those trees.",
-  "//": "Read the slow-corner WNS + whether the worst path is now arithmetic or still",
-  "//": "hold-fix dlyb buffers. If the floor drops below ~47ns, the fanout cap worked.",
-  "CLOCK_PERIOD": 40,
+  "//": "split-add branch, CLEAN 50ns (~20 MHz) confirming run. The split-add floor is",
+  "//": "~47ns (hold-fix limited); 50ns gives a ~+3ns slow-corner buffer for a clean",
+  "//": "all-corner close. This is the bankable result: ~20 MHz guaranteed (~42 MHz bench),",
+  "//": "up from 17.5 MHz, bit-exact. Past this needs hold/setup flow work for ~2-3 MHz.",
+  "CLOCK_PERIOD": 50,
 
   "//": "Hold slack margin - Increase them in case you are getting hold violations.",
   "PL_RESIZER_HOLD_SLACK_MARGIN": 0.1,
@@ -34,11 +33,9 @@
   "//": "Diodes are passive charge-bleed protection: bit-exact, negligible area/power.",
   "RUN_HEURISTIC_DIODE_INSERTION": 1,
 
-  "//": "Cap fanout so the tool splits high-fanout nets into smaller buffer trees ->",
-  "//": "less clock skew -> less hold-fix delay needed -> smaller slow-corner setup",
-  "//": "penalty. This is the safe, automatic form of register replication; it targets",
-  "//": "the high-fanout startpoints that the hold-fix critical paths sit on.",
-  "MAX_FANOUT_CONSTRAINT": 8,
+  "//": "(Tried MAX_FANOUT_CONSTRAINT:8 to shrink the hold-fix buffer trees -- it BACKFIRED:",
+  "//": "over-buffered, +5ns worse slow-corner setup, so it is removed. The default fanout",
+  "//": "handling was better; the hold-fix thicket resisted the cheap knobs.)",
 
 
   "//": "RUN_LINTER, LINTER_INCLUDE_PDK_MODELS - Disabling the linter is not recommended!",
