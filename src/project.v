@@ -36,10 +36,22 @@ module tt_um_smerity_mandelbrot #(
     // uio[2:0] drive out (strobes); uio[7:3] are inputs.
     assign uio_oe = 8'b0000_0111;
 
+    // ================= reset synchroniser =================
+    // rst_n is an input pad fanning out to every register's reset -- an off-chip-
+    // delayed, huge-fanout net that was the design's critical path. Register it
+    // twice so the design's reset is driven by a flop (register-to-register,
+    // balanced by the tool) instead of the pad, and to guard rst_n against
+    // metastability. Reset releases ~2 clocks later than the pad: bit-exact, since
+    // the framework holds rst_n low for many cycles and the frame just starts a
+    // couple cycles afterward. Everything below uses `rstn`, not `rst_n`.
+    reg [1:0] rst_sync = 2'b00;
+    always @(posedge clk) rst_sync <= {rst_sync[0], rst_n};
+    wire rstn = rst_sync[1];
+
     // ================= input synchronisers (CDC) =================
     reg [1:0] pv_sync, pf_sync;
     always @(posedge clk) begin
-        if (!rst_n) begin pv_sync <= 2'b0; pf_sync <= 2'b0; end
+        if (!rstn) begin pv_sync <= 2'b0; pf_sync <= 2'b0; end
         else begin
             pv_sync <= {pv_sync[0], uio_in[3]};
             pf_sync <= {pf_sync[0], uio_in[4]};
@@ -58,7 +70,7 @@ module tt_um_smerity_mandelbrot #(
     wire commit;                              // 1-clk pulse from the FSM at frame end
 
     always @(posedge clk) begin
-        if (!rst_n) begin
+        if (!rstn) begin
             shadow <= {(3*WIDTH+8){1'b0}}; pv_d <= 1'b0; pf_d <= 1'b0; view_pending <= 1'b0;
         end else begin
             pv_d <= param_valid;
@@ -90,7 +102,7 @@ module tt_um_smerity_mandelbrot #(
     assign commit = (phase == S_LINEEND) & (y == H-1) & view_pending;
 
     always @(posedge clk) begin
-        if (!rst_n) begin
+        if (!rstn) begin
             phase <= S_FRAME; x <= 9'b0; y <= 8'b0;
             cx <= DEF_CX; cy <= DEF_CY;
             corner_x <= DEF_CX; corner_y <= DEF_CY; step <= DEF_STEP; maxit_r <= MAXIT;
@@ -137,7 +149,7 @@ module tt_um_smerity_mandelbrot #(
     end
 
     mandel #(.FRAC(FRAC), .WIDTH(WIDTH)) core (
-        .clk(clk), .rst_n(rst_n), .start(m_start),
+        .clk(clk), .rst_n(rstn), .start(m_start),
         .cx(cx), .cy(cy), .maxit(maxit_r), .value(m_value), .busy(m_busy)
     );
 

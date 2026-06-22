@@ -17,16 +17,22 @@
 
   "//": "CLOCK_PERIOD - Increase this in case you are getting setup time violations.",
   "//": "The value is in nanoseconds, so 20ns == 50MHz.",
-  "//": "smul2 branch: tightened 200ns->100ns (10 MHz). The 5 MHz harden on main",
-  "//": "closed with +113ns slow-corner setup slack (path ~88ns), so 100ns has ample",
-  "//": "room even with smul2's slightly longer per-cycle Booth path. If the gds Action",
-  "//": "reports a setup violation, relax toward 120-150ns; if global placement fails",
-  "//": "with GPL-0302, raise PL_TARGET_DENSITY_PCT (60 -> 70).",
-  "CLOCK_PERIOD": 100,
+  "//": "harden-speed branch: 64ns (~15.6 MHz). Datapath floor is ~60ns after the",
+  "//": "reset synchroniser, so 64ns closes timing with comfortable margin. The 60ns run",
+  "//": "had ONE marginal antenna net (400.8 vs 400.0, 0.2% over) on the reset-fanout",
+  "//": "tree; 64ns's looser routing plus heuristic diode insertion (above) clears it.",
+  "CLOCK_PERIOD": 64,
 
   "//": "Hold slack margin - Increase them in case you are getting hold violations.",
   "PL_RESIZER_HOLD_SLACK_MARGIN": 0.1,
   "GRT_RESIZER_HOLD_SLACK_MARGIN": 0.05,
+
+  "//": "Antenna: proactively insert protection diodes on long internal nets during",
+  "//": "placement (more of the diode insertion the flow already does -- 6 were auto-",
+  "//": "placed). Clears the 60ns run's one marginal net (net292, Metal2 400.8 vs 400.0).",
+  "//": "Diodes are passive charge-bleed protection: bit-exact, negligible area/power.",
+  "RUN_HEURISTIC_DIODE_INSERTION": 1,
+
 
   "//": "RUN_LINTER, LINTER_INCLUDE_PDK_MODELS - Disabling the linter is not recommended!",
   "RUN_LINTER": 1,
