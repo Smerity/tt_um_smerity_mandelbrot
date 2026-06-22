@@ -27,6 +27,12 @@
   "PL_RESIZER_HOLD_SLACK_MARGIN": 0.1,
   "GRT_RESIZER_HOLD_SLACK_MARGIN": 0.05,
 
+  "//": "Setup slack margin - force the resizer to keep optimizing setup even at a loose",
+  "//": "clock target. The 50ns run under-optimized (path grew 47->60ns); these margins",
+  "//": "push it back down toward the ~47ns floor so 50ns closes with room.",
+  "PL_RESIZER_SETUP_SLACK_MARGIN": 2.0,
+  "GRT_RESIZER_SETUP_SLACK_MARGIN": 1.0,
+
   "//": "Antenna: proactively insert protection diodes on long internal nets during",
   "//": "placement (more of the diode insertion the flow already does -- 6 were auto-",
   "//": "placed). Clears the 60ns run's one marginal net (net292, Metal2 400.8 vs 400.0).",
