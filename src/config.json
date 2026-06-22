@@ -17,12 +17,12 @@
 
   "//": "CLOCK_PERIOD - Increase this in case you are getting setup time violations.",
   "//": "The value is in nanoseconds, so 20ns == 50MHz.",
-  "//": "pipeline-explore branch: AGGRESSIVE PROBE at 44ns (~22.7 MHz) on the pipelined",
-  "//": "core (mag2 64-bit add split into S_MAG). FPGA fmax jumped 21->30 MHz (~1.4x",
-  "//": "shorter path), so the GF180 ~60ns floor should drop toward ~43ns. 44ns is likely",
-  "//": "near/past the new floor: read the slow-corner WNS to get the achieved path, then",
-  "//": "walk back to path+~3ns. Heuristic diodes (above) keep antenna clean at tight routing.",
-  "CLOCK_PERIOD": 44,
+  "//": "pipeline-explore branch: CLEAN CONFIRMING run at 57ns (~17.5 MHz) on the",
+  "//": "pipelined core. The 44ns probe found the slow-corner floor at ~53ns (path was",
+  "//": "hold-fix-buffer dominated, not arithmetic -- the mag2 split gained ~+2MHz over the",
+  "//": "synchroniser-only ~16.6MHz). 57ns gives the ~53ns path a ~+4ns slow-corner buffer",
+  "//": "for a clean all-corner close. Heuristic diodes (above) keep antenna clean.",
+  "CLOCK_PERIOD": 57,
 
   "//": "Hold slack margin - Increase them in case you are getting hold violations.",
   "PL_RESIZER_HOLD_SLACK_MARGIN": 0.1,
